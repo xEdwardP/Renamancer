@@ -34,16 +34,17 @@ pub fn read_selection(paths: &[PathBuf]) -> Result<Vec<FileEntry>, String> {
                 .map_or_else(|| "Sin extensión".into(), str::to_uppercase);
             files.push(FileEntry {
                 path: resolved,
+                id: String::new(),
                 name,
                 size: metadata.len(),
                 kind,
             });
         }
     }
-    files.sort_by(|left, right| {
-        natord::compare_ignore_case(&left.name, &right.name)
-            .then_with(|| left.name.cmp(&right.name))
-    });
+    files.sort_by(|left, right| crate::domain::order::natural_name(&left.name, &right.name));
+    for (index, file) in files.iter_mut().enumerate() {
+        file.id = format!("f{index}");
+    }
     Ok(files)
 }
 
@@ -56,6 +57,19 @@ fn inspect(path: &Path) -> Result<(PathBuf, fs::Metadata), String> {
         return Err("Selecciona archivos de un volumen local.".into());
     }
 
+    let metadata = inspect_ancestors(path)?;
+    if !metadata.is_file() {
+        return Err("Selecciona únicamente archivos regulares.".into());
+    }
+    let resolved = fs::canonicalize(path).map_err(|_| unavailable(path))?;
+    #[cfg(windows)]
+    if !is_local(&resolved) {
+        return Err("Selecciona archivos de un volumen local.".into());
+    }
+    Ok((resolved, metadata))
+}
+
+pub(super) fn inspect_ancestors(path: &Path) -> Result<fs::Metadata, String> {
     let mut metadata = None;
     // Walk from the root to avoid inspecting anything through a junction or link.
     let ancestors: Vec<_> = path.ancestors().collect();
@@ -65,22 +79,21 @@ fn inspect(path: &Path) -> Result<(PathBuf, fs::Metadata), String> {
         .filter(|part| !part.as_os_str().is_empty())
     {
         let attributes = fs::symlink_metadata(component).map_err(|_| unavailable(path))?;
-        if attributes.file_type().is_symlink() {
+        #[cfg(windows)]
+        let reparse = {
+            use std::os::windows::fs::MetadataExt;
+            attributes.file_attributes() & 0x400 != 0
+        };
+        #[cfg(not(windows))]
+        let reparse = attributes.file_type().is_symlink();
+        if reparse {
             return Err(
                 "La selección contiene un enlace simbólico o una unión de directorio.".into(),
             );
         }
         metadata = Some(attributes);
     }
-    let metadata = metadata
-        .filter(fs::Metadata::is_file)
-        .ok_or("Selecciona únicamente archivos regulares.")?;
-    let resolved = fs::canonicalize(path).map_err(|_| unavailable(path))?;
-    #[cfg(windows)]
-    if !is_local(&resolved) {
-        return Err("Selecciona archivos de un volumen local.".into());
-    }
-    Ok((resolved, metadata))
+    metadata.ok_or_else(|| unavailable(path))
 }
 
 fn unavailable(path: &Path) -> String {

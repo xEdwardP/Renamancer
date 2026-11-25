@@ -1,8 +1,7 @@
-use crate::state::{Selection, SelectionState};
+use crate::state::{PreviewResponse, Selection, SelectionState};
 use renombrador_core::{
-    application::{self, Preview},
-    domain::rules::RuleConfig,
-    infrastructure::selection,
+    application::{PreviewRequest, Revision},
+    infrastructure::{folder::NativeSelection, selection},
 };
 use serde::Serialize;
 use tauri::{State, WebviewWindow, async_runtime::spawn_blocking};
@@ -14,12 +13,6 @@ pub enum PickResult {
     Cancelled,
     Rejected { reason: String },
     Replaced { selection: Selection },
-}
-
-#[derive(Serialize)]
-pub struct PreviewResponse {
-    revision: u32,
-    preview: Preview,
 }
 
 #[tauri::command]
@@ -40,7 +33,7 @@ pub async fn pick_files(
                     .map(|file| file.into_path())
                     .collect::<Result<Vec<_>, _>>()
                     .map_err(|_| "Selecciona únicamente archivos locales.".to_owned())?;
-                selection::read_selection(&paths)
+                selection::read_selection(&paths).and_then(NativeSelection::capture)
             })
     })
     .await
@@ -49,25 +42,21 @@ pub async fn pick_files(
     Ok(match chosen {
         None => PickResult::Cancelled,
         Some(Err(reason)) => PickResult::Rejected { reason },
-        Some(Ok(files)) => PickResult::Replaced {
-            selection: state.replace(files),
+        Some(Ok(selection)) => PickResult::Replaced {
+            selection: state.replace(selection),
         },
     })
 }
 
 #[tauri::command]
+pub fn notify_preview_revision(state: State<'_, SelectionState>, request: Revision) {
+    state.notify(request);
+}
+
+#[tauri::command]
 pub async fn generate_preview(
     state: State<'_, SelectionState>,
-    revision: u32,
-    config: RuleConfig,
-) -> Result<PreviewResponse, String> {
-    let selection = state.current();
-    let preview = if selection.revision == revision {
-        spawn_blocking(move || application::generate_preview(&selection.files, &config))
-            .await
-            .map_err(|_| "No se pudo calcular la vista previa.".to_owned())?
-    } else {
-        Preview::Stale
-    };
-    Ok(PreviewResponse { revision, preview })
+    request: PreviewRequest,
+) -> Result<PreviewResponse, &'static str> {
+    state.preview(request).await
 }

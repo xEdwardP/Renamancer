@@ -9,7 +9,8 @@ fn main() {
         .manage(state::SelectionState::default())
         .invoke_handler(tauri::generate_handler![
             commands::pick_files,
-            commands::generate_preview
+            commands::generate_preview,
+            commands::notify_preview_revision
         ])
         .run(tauri::generate_context!())
         .expect("No se pudo iniciar Renamancer");

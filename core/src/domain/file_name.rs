@@ -9,15 +9,7 @@ pub fn validate(name: &str) -> Result<(), &'static str> {
     if name.is_empty() {
         return Err("El nombre está vacío.");
     }
-    if name.contains("..")
-        || name.chars().any(|character| {
-            character <= '\u{1f}'
-                || matches!(
-                    character,
-                    '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*'
-                )
-        })
-    {
+    if name.contains("..") || name.chars().any(invalid_character) {
         return Err("El nombre contiene caracteres que Windows no admite.");
     }
     if name.ends_with(['.', ' ']) {
@@ -36,4 +28,12 @@ pub fn validate(name: &str) -> Result<(), &'static str> {
         return Err("El nombre está reservado por Windows.");
     }
     Ok(())
+}
+
+pub(crate) fn invalid_character(character: char) -> bool {
+    character <= '\u{1f}'
+        || matches!(
+            character,
+            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*'
+        )
 }

@@ -93,7 +93,7 @@ fn invalid_rule_inputs_are_attributed_to_fields() {
         (RuleField::Pattern, vec!["[", "[0-9]", "(?!x)([0-9])"]),
         (
             RuleField::Template,
-            vec!["{nombre", "nombre}", "{fecha}", "{ext}{ext}", "{ext}otro"],
+            vec!["{nombre", "nombre}", "{ext}{ext}", "{ext}otro"],
         ),
     ] {
         for value in invalid {
@@ -103,6 +103,7 @@ fn invalid_rule_inputs_are_attributed_to_fields() {
                 RuleField::Digits => config.digits = value.into(),
                 RuleField::Pattern => config.pattern = value.into(),
                 RuleField::Template => config.template = value.into(),
+                _ => unreachable!(),
             }
             let Err(errors) = build_rule(&config) else {
                 panic!("Se aceptó {value}")

@@ -1,5 +1,7 @@
-use super::{RenameRule, RuleConfig, RuleError, RuleField, template::Template};
-use crate::domain::file_name;
+use super::{
+    RuleError, RuleField, bounded_number, errors,
+    template::{Template, Values},
+};
 use regex::Regex;
 
 pub struct EpisodeRule<'a> {
@@ -10,11 +12,15 @@ pub struct EpisodeRule<'a> {
 }
 
 impl<'a> EpisodeRule<'a> {
-    pub fn build(config: &'a RuleConfig) -> Result<Self, Vec<RuleError>> {
-        let season =
-            bounded_number(&config.season, 0, 999).ok_or("Introduce una temporada de 0 a 999.");
-        let digits = bounded_number(&config.digits, 1, 9).ok_or("Introduce un ancho de 1 a 9.");
-        let pattern = Regex::new(&config.pattern)
+    pub fn build(
+        season: &str,
+        digits: &str,
+        pattern: &str,
+        template: &'a str,
+    ) -> Result<Self, Vec<RuleError>> {
+        let season = bounded_number(season, 0, 999).ok_or("Introduce una temporada de 0 a 999.");
+        let digits = bounded_number(digits, 1, 9).ok_or("Introduce un ancho de 1 a 9.");
+        let pattern = Regex::new(pattern)
             .map_err(|_| "Patrón no válido. Revisa la sintaxis. No se admiten anticipaciones, retrospecciones ni referencias a grupos dentro del patrón.")
             .and_then(|pattern| {
                 if pattern.captures_len() > 1 {
@@ -23,7 +29,7 @@ impl<'a> EpisodeRule<'a> {
                     Err("Incluye un grupo de captura para el número de episodio.")
                 }
             });
-        let template = Template::parse(&config.template);
+        let template = Template::parse(template, false);
         match (season, digits, pattern, template) {
             (Ok(season), Ok(digits), Ok(pattern), Ok(template)) => Ok(Self {
                 pattern,
@@ -31,54 +37,44 @@ impl<'a> EpisodeRule<'a> {
                 digits,
                 template,
             }),
-            (season, digits, pattern, template) => Err([
+            (season, digits, pattern, template) => Err(errors([
                 (RuleField::Season, season.err()),
                 (RuleField::Digits, digits.err()),
                 (RuleField::Pattern, pattern.err()),
                 (RuleField::Template, template.err()),
-            ]
-            .into_iter()
-            .filter_map(|(field, message)| message.map(|message| RuleError { field, message }))
-            .collect()),
+            ])),
         }
     }
-}
 
-fn bounded_number(value: &str, min: usize, max: usize) -> Option<usize> {
-    if !value.bytes().all(|digit| digit.is_ascii_digit()) {
-        return None;
+    pub fn uses_date(&self) -> bool {
+        self.template.uses_date()
     }
-    value
-        .parse()
-        .ok()
-        .filter(|number| (min..=max).contains(number))
-}
 
-impl RenameRule for EpisodeRule<'_> {
-    fn apply(&self, name: &str) -> Result<Option<String>, &'static str> {
-        let (stem, extension) = file_name::split(name);
-        let Some(episode) = self
-            .pattern
-            .captures(stem)
-            .and_then(|matched| matched.get(1))
-        else {
-            return Ok(None);
-        };
-        let episode = episode.as_str();
-        let Some(number) = bounded_number(episode, 0, 999_999_999).filter(|_| episode.len() <= 9)
-        else {
-            return Ok(None);
+    pub fn episode_number(&self, stem: &str) -> Option<usize> {
+        let episode = self.pattern.captures(stem)?.get(1)?.as_str();
+        bounded_number(episode, 0, 999_999_999).filter(|_| episode.len() <= 9)
+    }
+
+    pub fn emit(
+        &self,
+        stem: &str,
+        date: Option<&str>,
+        push: impl FnMut(&str) -> Result<(), &'static str>,
+    ) -> Result<bool, &'static str> {
+        let Some(number) = self.episode_number(stem) else {
+            return Ok(false);
         };
         let episode = format!("{number:0width$}", width = self.digits);
-        let mut candidate = self.template.render(stem, &self.season, &episode);
-        if candidate.is_empty() {
-            return Err("El nombre antes de la extensión está vacío.");
-        }
-        candidate.push_str(extension);
-        if candidate == name {
-            return Ok(None);
-        }
-        file_name::validate(&candidate)?;
-        Ok(Some(candidate))
+        self.template.emit(
+            Values {
+                name: stem,
+                season: &self.season,
+                episode: &episode,
+                date,
+                ..Values::default()
+            },
+            push,
+        )?;
+        Ok(true)
     }
 }

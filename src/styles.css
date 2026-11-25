@@ -15,7 +15,7 @@
 body { margin: 0; }
 button { cursor: pointer; }
 button:disabled { cursor: wait; opacity: .7; }
-button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
   outline: 2px solid var(--orange);
   outline-offset: 3px;
 }
@@ -54,22 +54,47 @@ td { overflow-wrap: anywhere; }
 .row-status { display: inline-flex; align-items: flex-start; gap: 5px; }
 .row-status svg { flex-shrink: 0; margin-top: 1px; }
 .row-status small { display: block; font-size: 11px; }
-.proposed { color: #7fd6b4; }
+.row-status.ready { color: #7fd6b4; }
+.row-status.conflict { color: #ffd18c; }
+.row-status.unchanged, .row-status.excluded { color: var(--muted); }
 .muted { color: var(--muted); }
 .error { color: #ff9bb0; }
 .rule { padding: 16px; overflow: auto; }
 .rule h2 { font-size: 20px; font-weight: 700; }
-.mode { display: inline-flex; align-items: center; gap: 7px; border-radius: 7px; background: #4a2a1c; color: #ffb08a; font-weight: 700; padding: 7px 11px; margin: 12px 0 18px; }
+.mode-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; margin: 12px 0 16px; }
+.mode-switch button { border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; color: var(--muted); font-size: 13px; }
+.mode-switch button:hover { background: #303239; }
+.mode-switch button[aria-pressed=true] { color: #ffb08a; background: #4a2a1c; border-color: #a25936; font-weight: 700; }
+.rule-fields { display: grid; gap: 11px; }
 .rule-numbers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .field { display: grid; min-width: 0; align-content: start; gap: 5px; }
 .field label { font-size: 13px; font-weight: 600; }
-.field input { width: 100%; min-width: 0; border: 1px solid #50535b; border-radius: 7px; background: #1d1f23; padding: 8px 9px; font-size: 13px; }
+.field input, .field select { width: 100%; min-width: 0; border: 1px solid #50535b; border-radius: 7px; background: #1d1f23; padding: 8px 9px; font-size: 13px; }
 .field input[aria-invalid=true] { border-color: #ff9bb0; }
 .field small { font-size: 11px; line-height: 1.5; overflow-wrap: anywhere; }
-.advanced-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; margin: 15px 0 9px; border-top: 1px solid var(--line); padding: 11px 0 1px; text-align: left; font-size: 13px; font-weight: 700; }
+.advanced-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; border-top: 1px solid var(--line); padding: 8px 0 1px; text-align: left; font-size: 13px; font-weight: 700; }
 .advanced-toggle[aria-expanded=true] svg { transform: rotate(180deg); }
 .advanced-fields { display: grid; gap: 12px; }
-.summary { padding: 10px 15px; color: #d4d4d7; font-size: 13px; }
+.summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 15px; color: #d4d4d7; font-size: 13px; }
+.extension-option { border-top: 1px solid var(--line); padding-top: 10px; }
+.check-cell { text-align: center; }
+.check-cell input, .inline-option input { accent-color: var(--orange); width: 15px; height: 15px; vertical-align: middle; }
+.inline-option, .sort-button { display: inline-flex; align-items: center; gap: 6px; }
+.inline-option { font-size: 13px; }
+.sort-button:hover, .sort-button svg { color: #ffb08a; }
+.include-all { display: inline-flex; align-items: center; gap: 5px; }
+.name-row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 9px; margin-top: 5px; font-size: 11px; }
+.name-row-actions button { color: #ffb08a; text-decoration: underline; text-underline-offset: 3px; }
+.name-editor { width: min(520px, calc(100vw - 40px)); margin: auto; padding: 20px; color: inherit; }
+.name-editor::backdrop { background: #101114b8; }
+.name-editor h2 { font-size: 20px; font-weight: 700; }
+.name-editor form > p:first-of-type { overflow-wrap: anywhere; margin-top: 6px; }
+.name-fields { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; margin-top: 18px; }
+.name-fields > .field > span:first-child { font-size: 13px; font-weight: 600; }
+.name-extension { padding: 8px 0; font-size: 13px; }
+.name-result { min-height: 24px; margin-block: 8px; font-size: 13px; }
+.name-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 9px; }
+.name-actions .primary { padding: 9px 15px; font-size: 14px; }
 
 @media (max-width: 900px) {
   .editor { grid-template-columns: minmax(0, 1fr) 245px; }

@@ -3,5 +3,6 @@ import type { Api } from '../types';
 
 export const desktopApi: Api = {
   pickFiles: () => invoke('pick_files'),
-  preview: (revision, config) => invoke('generate_preview', { revision, config }),
+  notifyRevision: (request) => invoke('notify_preview_revision', { request }),
+  preview: (request) => invoke('generate_preview', { request }),
 };

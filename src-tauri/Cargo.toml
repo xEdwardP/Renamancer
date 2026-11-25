@@ -11,3 +11,6 @@ renombrador-core = { path = "../core" }
 serde = { version = "1", features = ["derive", "rc"] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
+
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }

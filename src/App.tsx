@@ -1,4 +1,5 @@
 import { FilePlus2, ListRestart, X } from 'lucide-react';
+import { useCallback, useRef } from 'react';
 import { useStore } from 'zustand';
 import { desktopApi } from './api/desktop';
 import { Home } from './features/inicio/Home';
@@ -9,10 +10,16 @@ type Store = ReturnType<typeof createPreviewStore>;
 const desktopStore = createPreviewStore(desktopApi);
 
 export function App({ store = desktopStore }: { store?: Store }) {
-  const { screen, rule, picking, notice, advanced, pickFiles, clearNotice, edit, setAdvanced } = useStore(store);
+  const {
+    screen, mode, forms, sort, excludedIds, manualNames, draft, picking, notice, advanced,
+    pickFiles, clearNotice, edit, setMode, setAdvanced, sortBy, toggleFile, toggleAll, retry,
+    openNameEditor, editName, saveName, cancelName, restoreName,
+  } = useStore(store);
+  const selectRef = useRef<HTMLButtonElement>(null);
+  const focusSelect = useCallback(() => selectRef.current?.focus(), []);
   const count = screen.kind === 'edicion' ? screen.selection.files.length : 0;
   const select = (
-    <button className={screen.kind === 'inicio' ? 'select primary' : 'select'} disabled={picking} onClick={pickFiles}>
+    <button ref={selectRef} className={screen.kind === 'inicio' ? 'select primary' : 'select'} disabled={picking} onClick={pickFiles}>
       <FilePlus2 size={19} aria-hidden="true" />
       {picking ? 'Abriendo selector…' : 'Seleccionar archivos'}
     </button>
@@ -30,7 +37,12 @@ export function App({ store = desktopStore }: { store?: Store }) {
         </div>
       )}
       {screen.kind === 'inicio' ? <Home select={select} /> : (
-        <Editor screen={screen} rule={rule} advanced={advanced} onAdvanced={setAdvanced} onEdit={edit} />
+        <Editor screen={screen} rule={forms[mode]} sort={sort} excludedIds={excludedIds}
+          manualNames={manualNames} draft={draft} advanced={advanced} onFocusSelect={focusSelect}
+          onAdvanced={setAdvanced} onMode={setMode} onEdit={edit} onSort={sortBy}
+          onToggleFile={toggleFile} onToggleAll={toggleAll} onOpenName={openNameEditor}
+          onEditName={editName} onSaveName={saveName} onCancelName={cancelName}
+          onRestoreName={restoreName} onRetry={retry} />
       )}
     </main>
   );
